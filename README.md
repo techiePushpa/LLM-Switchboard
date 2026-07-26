@@ -1,4 +1,4 @@
-# ChatForge
+# LLM-SwitchBoard(ChatForge)
 
 A multi-LLM chat interface, routed through your own local models via **Ollama**. Design is
 inspired by Morphic's minimal, centered aesthetic; the routing/switchboard concept and logo are
