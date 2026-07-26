@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatForge -- Multi-LLM Chat</title>
+    <meta name="description" content="One chat interface, every model. Route prompts to GPT, Claude, Gemini, Groq, and more." />
+    <!-- Set theme before first paint to avoid a light/dark flash -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("chatforge:theme");
+          var theme = stored || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

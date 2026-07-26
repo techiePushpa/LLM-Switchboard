@@ -1,0 +1,82 @@
+// ChatForge database schema
+// Run locally against your own Postgres instance:
+//   npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  avatarColor  String   @default("#e3a438") // used for the initials avatar
+  defaultModel String   @default("gpt-4o")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions      Session[]
+  conversations Conversation[]
+
+  @@map("users")
+}
+
+/// One row per logged-in device/browser. Storing a hash (never the raw
+/// token) means a leaked database still can't be used to forge sessions,
+/// and deleting a row instantly revokes that device -- this is what
+/// "log out" and "log out of all devices" actually operate on.
+model Session {
+  id               String   @id @default(uuid())
+  userId           String
+  refreshTokenHash String   @unique
+  userAgent        String?
+  ipAddress        String?
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String   @default("New chat")
+  modelId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId, updatedAt])
+  @@map("conversations")
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  modelId        String?
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
