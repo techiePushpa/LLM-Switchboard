@@ -13,7 +13,7 @@ export async function listConversations(req: Request, res: Response) {
 }
 
 // GET /api/conversations/:id  (with messages)
-export async function getConversation(req: Request, res: Response) {
+export async function getConversation(req: Request<{ id: string }>, res: Response) {
   const conversation = await prisma.conversation.findFirst({
     where: { id: req.params.id, userId: req.user!.sub },
     include: { messages: { orderBy: { createdAt: "asc" } } },
@@ -48,7 +48,7 @@ const updateSchema = z.object({
   modelId: z.string().min(1).optional(),
 });
 
-export async function updateConversation(req: Request, res: Response) {
+export async function updateConversation(req: Request<{ id: string }>, res: Response) {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid update." });
 
@@ -65,7 +65,7 @@ export async function updateConversation(req: Request, res: Response) {
 }
 
 // DELETE /api/conversations/:id
-export async function deleteConversation(req: Request, res: Response) {
+export async function deleteConversation(req: Request<{ id: string }>, res: Response) {
   const owned = await prisma.conversation.findFirst({
     where: { id: req.params.id, userId: req.user!.sub },
   });
@@ -88,7 +88,7 @@ const messageSchema = z.object({
   modelId: z.string().optional(),
 });
 
-export async function addMessage(req: Request, res: Response) {
+export async function addMessage(req: Request<{ id: string }>, res: Response) {
   const parsed = messageSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid message." });
 
@@ -112,7 +112,7 @@ export async function addMessage(req: Request, res: Response) {
 // Deletes that message and every message after it in the conversation --
 // used before an edit/regenerate so Ollama isn't fed a stale reply as
 // context on the next turn.
-export async function deleteMessagesFrom(req: Request, res: Response) {
+export async function deleteMessagesFrom(req: Request<{ id: string; messageId: string }>, res: Response) {
   const owned = await prisma.conversation.findFirst({
     where: { id: req.params.id, userId: req.user!.sub },
   });
