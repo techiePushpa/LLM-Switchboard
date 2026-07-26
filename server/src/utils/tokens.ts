@@ -53,10 +53,17 @@ export function hashRefreshToken(raw: string): string {
 
 export const REFRESH_COOKIE_NAME = "cf_refresh";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export const refreshCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  // Cross-site cookies require Secure + SameSite=None (and therefore
+  // HTTPS on both ends) once the frontend and backend live on different
+  // domains, e.g. a Vercel URL calling a tunneled localhost backend.
+  // Locally, both run on http://localhost so "lax" + non-secure works
+  // and is the safer default for plain HTTP dev.
+  secure: isProduction,
+  sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
   path: "/api/auth",
   maxAge: REFRESH_TOKEN_TTL_MS,
 };
