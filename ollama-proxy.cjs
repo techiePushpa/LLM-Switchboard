@@ -1,4 +1,4 @@
-// Tiny local reverse proxy for Ollama.
+// Tiny local reverse proxy for Ollama.this is important to run the project in other system when the ollama is running locally in my syatem.
 //
 // Ollama rejects incoming requests whose Host header isn't "localhost" or
 // "127.0.0.1" (a defense against DNS-rebinding attacks). A public tunnel
