@@ -22,12 +22,13 @@ export interface Conversation {
 }
 
 export type ProviderId =
+  | "groq"
+  | "openrouter"
+  | "huggingface"
   | "ollama"
   | "openai"
   | "anthropic"
   | "google"
-  | "groq"
-  | "openrouter"
   | "mistral"
   | "meta"
   | "deepseek"

@@ -1,8 +1,9 @@
-# LLM-SwitchBoard(ChatForge)
+# ChatForge
 
-A multi-LLM chat interface, routed through your own local models via **Ollama**. Design is
-inspired by Morphic's minimal, centered aesthetic; the routing/switchboard concept and logo are
-still ChatForge's own.
+A multi-LLM chat interface, routed through free cloud AI providers -- Groq, OpenRouter, and
+Hugging Face. Nothing needs to run on your own machine; the whole app works the moment it's
+deployed. Design is inspired by Morphic's minimal, centered aesthetic; the routing/switchboard
+concept and logo are ChatForge's own.
 
 ## Status
 
@@ -11,51 +12,93 @@ still ChatForge's own.
   - Register / login (JWT access token + rotating httpOnly refresh cookie)
   - Settings: Account, Preferences (default model), Data & Privacy (export / clear history / delete account)
   - Postgres schema for users, sessions, conversations, messages
-- [x] Feature 3 -- Real chat, wired to Ollama + Postgres
+- [x] Feature 3 -- Real chat, wired to Postgres
   - Every message is persisted; conversation history is loaded from Postgres, not memory
-  - Responses stream token-by-token straight from your local Ollama instance
+  - Responses stream token-by-token from whichever provider the selected model belongs to
   - Stop / regenerate / edit-and-resend all work against the real history
-- [x] **Landing page + entry flow (this drop)**
+- [x] Landing page + entry flow
   - New visitors see a marketing landing page (nav, hero, features, about, CTA, footer) before login
   - Dedicated Login/Register pages with animated transitions (framer-motion)
   - Logged-in users skip straight to the dashboard -- landing/login are never shown to them
-  - Login/Register also include: Remember me, Forgot password (UI placeholder), Continue with
-    Google (UI only), and on sign-up: Username + Confirm password + Terms checkbox
-- [ ] Features 4-15 -- branding polish, tests, deployment
+- [x] **Cloud-only model routing (this drop)** -- replaced the earlier Ollama-on-your-laptop
+  setup with three free cloud providers, so the deployed site works with zero dependency on any
+  personal machine being online
+- [ ] Features 4-15 -- branding polish, tests, more providers
 
 ## Project layout
 
 ```
 chatforge/
 ├─ src/              frontend (Vite + React + TypeScript + Tailwind v4)
-│  ├─ pages/          LoginPage.tsx, RegisterPage.tsx
+│  ├─ pages/          LandingPage.tsx, LoginPage.tsx, RegisterPage.tsx
 │  ├─ components/
 │  │  ├─ auth/        AuthLayout.tsx -- shared shell for login/register
 │  │  ├─ settings/     SettingsModal.tsx -- Account / Preferences / Data tabs
-│  │  ├─ sidebar/, chat/, prompt/, common/   (from Feature 1)
+│  │  ├─ sidebar/, chat/, prompt/, common/, landing/
+│  ├─ config/models.ts   the model list the UI shows (dropdown, badges, Preferences)
 │  ├─ store/          useAuthStore.ts, useChatStore.ts, useThemeStore.ts
 │  └─ lib/api.ts       fetch wrapper: attaches the access token, retries once on 401
 └─ server/            backend (Express + TypeScript + Prisma + PostgreSQL)
    ├─ prisma/schema.prisma   User, Session, Conversation, Message
    └─ src/
-      ├─ controllers/  auth.controller.ts, conversations.controller.ts
-      ├─ routes/       auth.routes.ts, conversations.routes.ts
+      ├─ config/models.ts     server-side allowlist: which models exist, which provider each
+      │                       belongs to, and which env var holds that provider's API key
+      ├─ controllers/  auth.controller.ts, chat.controller.ts, conversations.controller.ts
+      ├─ routes/       auth.routes.ts, chat.routes.ts, conversations.routes.ts
       ├─ middleware/auth.ts    verifies the access token on protected routes
       └─ utils/        password.ts (bcrypt), tokens.ts (JWT + refresh tokens)
 ```
 
-## How a message actually flows now
+## How a message actually flows
 
 1. Frontend calls `POST /api/chat` with `{ conversationId, modelId, content }`.
-2. Backend saves your message to Postgres, then pulls the **full conversation history**
-   from the `messages` table (not just your last line) so Ollama has real context.
-3. Backend calls `POST {OLLAMA_BASE_URL}/api/chat` with that history and `stream: true`,
-   and pipes Ollama's NDJSON response straight through to the browser as it arrives.
-4. Once the stream ends (or you hit Stop), the backend saves the full assistant reply to
+2. Backend saves your message to Postgres, then pulls the **full conversation history** from
+   the `messages` table (not just your last line) so the model has real context.
+3. Backend looks up `modelId` in `server/src/config/models.ts` to find which provider it
+   belongs to (Groq / OpenRouter / Hugging Face) and that provider's API key.
+4. Backend calls that provider's OpenAI-compatible `/chat/completions` endpoint with
+   `stream: true`. All three providers speak this same format, so one code path in
+   `chat.controller.ts` handles all of them -- only the base URL, key, and model string differ.
+5. As tokens stream in, the backend re-emits them to the browser as NDJSON lines (the same wire
+   format used before the Ollama-to-cloud switch, so the frontend's stream parser never had to
+   change).
+6. Once the stream ends (or you hit Stop), the backend saves the full assistant reply to
    Postgres as one `messages` row.
-5. Regenerate / edit-and-resend first call `DELETE /api/conversations/:id/messages/:messageId`
-   (deletes that message and everything after it) so the next request to Ollama doesn't get
-   confused by a stale reply still sitting in its context.
+7. Regenerate / edit-and-resend first call `DELETE /api/conversations/:id/messages/:messageId`
+   (deletes that message and everything after it) so the next request doesn't get confused by a
+   stale reply still sitting in the conversation history.
+
+## The models
+
+| Model | Provider | Good for |
+|---|---|---|
+| Llama 3.3 70B | Groq | Fast, general-purpose default |
+| DeepSeek R1 Distill | Groq | Step-by-step reasoning, math, logic |
+| GPT-OSS 120B | OpenRouter | Strong all-rounder, matches o3-mini on coding |
+| Qwen3 Coder | OpenRouter | Coding-focused, tool use |
+| DeepSeek R1 Distill 14B | Hugging Face | Reasoning, smaller/faster |
+
+All three providers are genuinely free -- no card required to sign up or get an API key. Free
+tiers do have rate limits (requests per minute/day), so a very active site could eventually hit
+them; upgrading later just means adding a paid key to the same env var, no code changes needed.
+
+Adding or removing a model is two edits: `src/config/models.ts` (controls what the UI shows)
+and `server/src/config/models.ts` (the server-side allowlist that actually authorizes and
+routes the request -- a model missing from this second list gets rejected even if the frontend
+sent it).
+
+## Getting your three API keys
+
+- **Groq** -- console.groq.com -> API Keys -> Create API Key
+- **OpenRouter** -- openrouter.ai -> Keys -> Create Key
+- **Hugging Face** -- huggingface.co -> Settings -> Access Tokens -> Create new token (read access is enough)
+
+Put all three in `server/.env` (or your host's environment variables when deployed):
+```
+GROQ_API_KEY="..."
+OPENROUTER_API_KEY="..."
+HUGGINGFACE_API_KEY="..."
+```
 
 ## How auth works
 
@@ -69,71 +112,41 @@ chatforge/
 - **Logout** deletes that one session row. **Logout of all devices** deletes every session row
   for the user. **Changing your password** also logs out every other device automatically.
 - Passwords are hashed with bcrypt (12 rounds), never stored or logged in plaintext.
+- `NODE_ENV=production` switches the login cookie to `Secure` + `SameSite=None`, required once
+  the frontend and backend live on different domains (e.g. Vercel talking to Render).
 
 ## Settings panel
 
 - **Account** -- name, email (read-only for now), avatar (initials), change password
-- **Preferences** -- default model for new chats (reads from the same `MODELS` list that powers
-  the chat dropdown, so adding a model in one place updates both)
+- **Preferences** -- default model for new chats (reads from the same list that powers the
+  chat dropdown)
 - **Data & Privacy** -- export all data as JSON, clear all chat history, delete account
   (cascades to sessions and conversations in Postgres)
 - Log out / log out of all devices, both in Account
 
 ## Running it locally
 
-### 1. Database (PostgreSQL -- you've already got this installed)
-
-Create a database:
-
-```bash
-psql -U postgres -c "CREATE DATABASE chatforge;"
-```
-
-### 2. Backend
-
+**1. Database** (Postgres -- local or Neon):
 ```bash
 cd server
-npm install
 cp .env.example .env
-# edit .env: set DATABASE_URL to your local Postgres connection string,
-# and generate two random secrets, e.g.  openssl rand -hex 32
-npx prisma migrate dev --name init   # creates the tables
-npm run dev                          # http://localhost:4000
+# fill in DATABASE_URL, JWT_ACCESS_SECRET, and the three provider API keys
+npm install
+npx prisma migrate dev --name init
+npm run dev            # http://localhost:4000
 ```
 
-> I wrote and reviewed all of this backend code by hand, but couldn't run
-> `prisma migrate` / `prisma generate` myself in this sandbox -- my network here is
-> restricted and can't reach `binaries.prisma.sh`. Run the two commands above on your
-> machine (with normal internet access + your local Postgres) and it'll generate the
-> Prisma client and create the tables. Let me know if either command errors and I'll fix it.
-
-### 3. Ollama (the model provider)
-
+**2. Frontend:**
 ```bash
-# install from https://ollama.com if you haven't
-ollama pull llama3
-ollama pull mistral
-ollama pull gemma
-ollama pull phi3
-ollama serve   # usually already running as a background service on :11434
-```
-
-The model registry (`src/config/models.ts`) currently lists exactly these four. Ollama exposes
-an OpenAI-compatible endpoint at `http://localhost:11434/v1/chat/completions`, which is what
-Feature 3 will call -- same pattern as the cloud providers from Feature 1's research, just
-pointed at your machine instead of the internet, and with no API key needed.
-
-### 4. Frontend
-
-```bash
-cd chatforge          # project root
+cd chatforge            # project root
 npm install
 cp .env.example .env.local
-npm run dev            # http://localhost:5173
+npm run dev              # http://localhost:5173
 ```
 
-Open `http://localhost:5173` -- you'll land on Register/Login before you ever see the chat
-interface.
+Open `http://localhost:5173` -- you'll land on the landing page, then Register/Login, then the
+chat interface. Send a message and it should stream back a real reply immediately -- no local
+model server, no tunnel, nothing else to run.
 
 ## What's stored in Postgres (and what isn't)
 
@@ -147,41 +160,47 @@ interface.
 Deleting a user cascades to their sessions and conversations automatically (`onDelete: Cascade`
 in `schema.prisma`), which is what powers the "delete account" button in Settings.
 
+## Deploying
+
+- **Frontend** -> Vercel (or Netlify) -- static build, set `VITE_API_URL` to your backend's URL
+- **Backend** -> Render (or Railway/Fly) -- set `DATABASE_URL`, `JWT_ACCESS_SECRET`,
+  `CLIENT_ORIGIN`, `NODE_ENV=production`, and the three provider API keys as environment
+  variables in the host's dashboard
+- **Database** -> Neon (or any managed Postgres) -- genuine free tier, no card required
+
+Because every provider here is a cloud API, there's no equivalent of the old "your laptop has
+to stay on" requirement -- once deployed, the site works for anyone, anytime, independent of
+your own machine.
+
 ## Security notes
 
 - CORS is locked to `CLIENT_ORIGIN` with `credentials: true` (required for the refresh cookie).
 - All request bodies are validated with `zod` before touching the database.
 - Login/register return the same generic error either way, so the API never confirms whether an
   email is registered.
+- Every model request is checked against a server-side allowlist (`server/src/config/models.ts`)
+  before it's forwarded to any provider -- a client can't inject an arbitrary model string to
+  spend quota on something outside the intended list.
 - `.env` is gitignored on both the frontend and `server/`.
-
-## Known placeholders in the new entry flow
-
-- **`src/config/site.ts` -- `GITHUB_URL`** points at a placeholder repo. Swap in your real one
-  (the nav bar and footer both read from this single constant).
-- **Username field on sign-up** is validated client-side but not persisted -- the `users` table
-  only has name/email/password today. Say the word and I'll add a `username` column + wire it
-  through the register endpoint.
-- **Forgot password** and **Continue with Google** are UI-only placeholders, exactly as the spec
-  asked for -- no backend behind either one yet.
 
 ## Troubleshooting
 
 **Stuck on the login/register screen, nothing happens:**
-1. Did you copy `.env.example` → `.env` in `server/` *and* `.env.example` → `.env.local` in the
+1. Did you copy `.env.example` -> `.env` in `server/` *and* `.env.example` -> `.env.local` in the
    project root? The backend refuses to start at all without real `JWT_ACCESS_SECRET`,
    `DATABASE_URL`, etc.
-2. Is `npm run dev` actually running inside `server/`, in its own terminal? Check for
-   `ChatForge API listening on http://localhost:4000` in that terminal.
-3. Open DevTools → Network tab, retry, click the failed request, and check its status/response --
-   that tells you exactly which layer failed (network / CORS / validation / database).
-4. `CLIENT_ORIGIN` in `server/.env` must exactly match the URL Vite printed (port and all).
+2. Is the backend actually running? Check for `ChatForge API listening on http://localhost:4000`
+   in its terminal.
+3. Open DevTools -> Network tab, retry, click the failed request, and check its status/response.
+4. `CLIENT_ORIGIN` in `server/.env` must exactly match the URL your frontend is served from
+   (protocol, host, and port -- no trailing slash).
 
-**Register/login works, but sending a message fails ("Couldn't reach Ollama..."):**
-- Run `ollama serve` (or confirm it's running as a background service) and `ollama list` to
-  confirm `llama3` / `mistral` / `gemma` / `phi3` are actually pulled.
-- `OLLAMA_BASE_URL` in `server/.env` should be `http://localhost:11434` unless you've changed it.
+**Sending a message fails with an error naming a provider:**
+- Confirm the matching API key (`GROQ_API_KEY` / `OPENROUTER_API_KEY` / `HUGGINGFACE_API_KEY`)
+  is actually set in `server/.env` (or your host's environment variables) and hasn't expired.
+- Free tiers rate-limit -- if you're testing heavily, you may need to wait a minute or switch
+  models temporarily.
 
 **Prisma errors on `migrate`/`generate`:**
 - Confirm Postgres is running and `DATABASE_URL` in `server/.env` matches a database that
-  actually exists (`psql -U postgres -c "CREATE DATABASE chatforge;"` if not).
+  actually exists.

@@ -17,7 +17,7 @@ export function WelcomeScreen({ onPick }: { onPick: (prompt: string) => void }) 
           Ask anything
         </h1>
         <p className="mt-2 text-[14px] text-[var(--text-2)]">
-          Pick a local model below and go -- ChatForge routes it through Ollama.
+          Pick a free model below and go -- ChatForge routes it for you.
         </p>
 
         <div className="mt-8 flex w-full flex-col gap-2">

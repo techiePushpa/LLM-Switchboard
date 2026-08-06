@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Menu, X, MessagesSquare, HardDrive, Zap, Palette, ShieldCheck } from "lucide-react";
+import { Menu, X, MessagesSquare, Sparkles, Zap, Palette, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { AnimatedBackground } from "@/components/landing/AnimatedBackground";
 import { GITHUB_URL, NAV_LINKS } from "@/config/site";
@@ -16,9 +16,9 @@ function GithubMark({ size = 17 }: { size?: number }) {
 
 const FEATURES = [
   {
-    icon: HardDrive,
+    icon: Sparkles,
     title: "Multi-Model Routing",
-    description: "Switch between Llama 3, Mistral, Gemma, and Phi-3 -- all running locally through Ollama.",
+    description: "Switch between Llama 3.3, DeepSeek R1, GPT-OSS, and Qwen3 -- all completely free.",
   },
   {
     icon: MessagesSquare,
@@ -27,8 +27,8 @@ const FEATURES = [
   },
   {
     icon: Zap,
-    title: "Fast, Local Responses",
-    description: "Models run on your own machine, so there's no round trip to a cloud API in the way.",
+    title: "Fast, Free Responses",
+    description: "Routed to Groq, OpenRouter, or Hugging Face -- no API bills, no setup on your end.",
   },
   {
     icon: Palette,
@@ -172,7 +172,7 @@ export function LandingPage({
           </h1>
 
           <p className="mt-5 max-w-lg text-[15.5px] text-[var(--text-2)]">
-            Experience AI conversations through a beautiful interface, routed to whichever local
+            Experience AI conversations through a beautiful interface, routed to whichever free
             model fits the moment.
           </p>
 
@@ -244,8 +244,8 @@ export function LandingPage({
         >
           <h2 className="text-[24px] font-medium tracking-tight">About ChatForge</h2>
           <p className="mt-3 text-[14.5px] leading-relaxed text-[var(--text-2)]">
-            ChatForge is a single interface for talking to several local language models without
-            juggling separate apps or cloud accounts. Pick a model per conversation, keep every
+            ChatForge is a single interface for talking to several free language models without
+            juggling separate accounts or API keys. Pick a model per conversation, keep every
             chat saved to your account, and switch models mid-project without losing context.
           </p>
         </motion.div>

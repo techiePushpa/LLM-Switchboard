@@ -33,7 +33,7 @@ function patchConversation(
   return conversations.map((c) => (c.id === id ? { ...c, ...patch } : c));
 }
 
-/** Parses Ollama's NDJSON stream, buffering across chunk boundaries so a
+/** Parses the backend's NDJSON stream, buffering across chunk boundaries so a
  * line split mid-network-packet doesn't get silently dropped. */
 function makeLineBuffer(onLine: (parsed: { message?: { content?: string }; done?: boolean }) => void) {
   let buffer = "";

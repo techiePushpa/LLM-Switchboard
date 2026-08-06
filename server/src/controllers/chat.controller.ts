@@ -1,8 +1,11 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
+import { PROVIDERS, resolveModel, getApiKey } from "../config/models.js";
 
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
+// Express's Response and the browser/fetch Response share a name --
+// this alias disambiguates the latter for the fetch() calls below.
+type FetchResponse = globalThis.Response;
 
 const chatSchema = z.object({
   conversationId: z.string().uuid(),
@@ -17,10 +20,22 @@ function deriveTitle(firstMessage: string): string {
 }
 
 /**
+ * Emits one NDJSON line in the same shape the frontend has always
+ * parsed (originally Ollama's own wire format). Keeping this shape
+ * means the frontend's stream parser didn't need to change at all when
+ * the backend switched from a local Ollama call to routing across
+ * three different cloud providers.
+ */
+function writeLine(res: Response, content: string, done: boolean) {
+  res.write(JSON.stringify({ message: { role: "assistant", content }, done }) + "\n");
+}
+
+/**
  * POST /api/chat
- * Streams NDJSON lines straight through from Ollama's /api/chat endpoint
- * (each line: {"message":{"role":"assistant","content":"..."},"done":false}),
- * so the frontend can parse them the same way Ollama itself emits them.
+ * Routes to whichever provider (Groq / OpenRouter / Hugging Face) the
+ * requested model belongs to. All three speak the same OpenAI-compatible
+ * Chat Completions format, so one code path handles all of them --
+ * only the base URL, API key, and model string change per provider.
  * Persists the user message up front and the full assistant reply once
  * the stream ends (or the client disconnects early).
  */
@@ -36,6 +51,17 @@ export async function sendChat(req: Request, res: Response) {
   });
   if (!conversation) return res.status(404).json({ error: "Conversation not found." });
 
+  const route = resolveModel(modelId);
+  if (!route) {
+    return res.status(400).json({ error: `"${modelId}" isn't a recognized model.` });
+  }
+  const apiKey = getApiKey(route.provider);
+  if (!apiKey) {
+    return res.status(500).json({
+      error: `Server is missing an API key for ${route.provider}. Set it in the backend's environment variables.`,
+    });
+  }
+
   if (!regenerate) {
     if (!content) return res.status(400).json({ error: "content is required." });
 
@@ -50,9 +76,9 @@ export async function sendChat(req: Request, res: Response) {
     }
   }
 
-  // Ollama needs the running history, not just the latest turn, to hold
-  // context across messages -- that's why this reads from the DB rather
-  // than trusting whatever the client happened to send.
+  // The provider needs the running history, not just the latest turn,
+  // to hold context across messages -- that's why this reads from the
+  // DB rather than trusting whatever the client happened to send.
   const history = await prisma.message.findMany({
     where: { conversationId },
     orderBy: { createdAt: "asc" },
@@ -60,28 +86,33 @@ export async function sendChat(req: Request, res: Response) {
   });
 
   // If the client disconnects (stop button, tab closed), stop asking
-  // Ollama to keep generating tokens nobody will see.
-  const ollamaAbort = new AbortController();
-  req.on("close", () => ollamaAbort.abort());
+  // the provider to keep generating tokens nobody will see.
+  const upstreamAbort = new AbortController();
+  req.on("close", () => upstreamAbort.abort());
 
-  let ollamaRes: Response2;
+  const { baseURL } = PROVIDERS[route.provider];
+  let upstreamRes: FetchResponse;
   try {
-    ollamaRes = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+    upstreamRes = await fetch(`${baseURL}/chat/completions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({ model: modelId, messages: history, stream: true }),
-      signal: ollamaAbort.signal,
+      signal: upstreamAbort.signal,
     });
-  } catch {
+  } catch (err) {
+    console.error(`Fetch to ${route.provider} failed:`, err);
     return res.status(502).json({
-      error: `Couldn't reach Ollama at ${OLLAMA_BASE_URL}. Is "ollama serve" running?`,
+      error: `Couldn't reach ${route.provider}. (${err instanceof Error ? err.message : "unknown error"})`,
     });
   }
 
-  if (!ollamaRes.ok || !ollamaRes.body) {
-    const text = await ollamaRes.text().catch(() => "");
+  if (!upstreamRes.ok || !upstreamRes.body) {
+    const text = await upstreamRes.text().catch(() => "");
     return res.status(502).json({
-      error: text || `Ollama returned ${ollamaRes.status}. Have you run "ollama pull ${modelId}"?`,
+      error: text || `${route.provider} returned ${upstreamRes.status}.`,
     });
   }
 
@@ -89,7 +120,7 @@ export async function sendChat(req: Request, res: Response) {
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Conversation-Id", conversation.id);
 
-  const reader = ollamaRes.body.getReader();
+  const reader = upstreamRes.body.getReader();
   const decoder = new TextDecoder();
   let full = "";
   let lineBuffer = "";
@@ -99,19 +130,23 @@ export async function sendChat(req: Request, res: Response) {
       const { value, done } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      res.write(chunk);
-
-      lineBuffer += chunk;
+      lineBuffer += decoder.decode(value, { stream: true });
       const lines = lineBuffer.split("\n");
       lineBuffer = lines.pop() ?? ""; // last entry may be a partial line
 
-      for (const line of lines) {
-        if (!line.trim()) continue;
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line.startsWith("data:")) continue;
+
+        const payload = line.slice(5).trim();
+        if (payload === "[DONE]") continue;
+
         try {
-          const parsedLine = JSON.parse(line);
-          if (typeof parsedLine?.message?.content === "string") {
-            full += parsedLine.message.content;
+          const parsedLine = JSON.parse(payload);
+          const delta: string | undefined = parsedLine?.choices?.[0]?.delta?.content;
+          if (typeof delta === "string" && delta.length > 0) {
+            full += delta;
+            writeLine(res, delta, false);
           }
         } catch {
           // partial/malformed line -- safe to skip, full text is best-effort
@@ -119,9 +154,11 @@ export async function sendChat(req: Request, res: Response) {
       }
     }
   } catch {
-    // client disconnected or Ollama dropped the connection -- fall through
-    // to persisting whatever we accumulated before the error.
+    // client disconnected or the provider dropped the connection -- fall
+    // through to persisting whatever we accumulated before the error.
   } finally {
+    writeLine(res, "", true);
+
     if (full.trim()) {
       await prisma.message.create({
         data: { conversationId, role: "assistant", content: full, modelId },
@@ -134,7 +171,3 @@ export async function sendChat(req: Request, res: Response) {
     if (!res.writableEnded) res.end();
   }
 }
-
-// Minimal structural type so this file doesn't need to import an HTTP
-// client's Response type just to declare the variable above.
-type Response2 = globalThis.Response;
