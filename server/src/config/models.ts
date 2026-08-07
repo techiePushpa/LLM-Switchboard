@@ -37,8 +37,8 @@ interface ModelRoute {
  */
 const MODEL_ROUTES: ModelRoute[] = [
   { id: "llama-3.3-70b-versatile", provider: "groq" },
-  { id: "deepseek-r1-distill-llama-70b", provider: "groq" },
-  { id: "openai/gpt-oss-120b:free", provider: "openrouter" },
+  { id: "openai/gpt-oss-20b:free", provider: "openrouter" },
+  { id: "poolside/laguna-s-2.1:free", provider: "openrouter" },
   { id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B", provider: "huggingface" },
   { id: "Qwen/Qwen2.5-7B-Instruct", provider: "huggingface" },
 ];

@@ -21,21 +21,22 @@ export const MODELS: ModelDefinition[] = [
     tag: "Fast",
     color: "#F55036",
   },
+  
   {
-    id: "deepseek-r1-distill-llama-70b",
-    label: "DeepSeek R1 Distill",
-    provider: "groq",
-    providerLabel: "Groq",
-    tag: "Reasoning",
-    color: "#4D6BFE",
-  },
-  {
-    id: "openai/gpt-oss-120b:free",
-    label: "GPT-OSS 120B",
+    id: "openai/gpt-oss-20b:free",
+    label: "GPT-OSS 20B",
     provider: "openrouter",
     providerLabel: "OpenRouter",
     tag: "Free",
     color: "#8B5CF6",
+  },
+  {
+    id: "poolside/laguna-s-2.1:free",
+    label: "Laguna S 2.1",
+    provider: "openrouter",
+    providerLabel: "OpenRouter",
+    tag: "Coding",
+    color: "#EC4899",
   },
   {
     id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
