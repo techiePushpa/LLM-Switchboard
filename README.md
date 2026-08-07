@@ -4,55 +4,54 @@
 
 **ChatForge** is a modern multi-LLM chat application that lets users switch between powerful AI models from **Groq, OpenRouter, and Hugging Face** — all from one clean interface.
 
-No local model installation. No Ollama. Just **select a model → ask → get a response.**
+## 🌐 Live Demo
+
+### 🚀 [Try ChatForge Live](https://llm-switchboard.vercel.app)
+
+**Select a model → Ask anything → Get an AI response.**
 
 ---
 
 ## ✨ What Makes ChatForge Special?
 
-🎯 **Multi-Model Chat**
-Switch between different AI models anytime.
+🎯 **Multi-Model Chat** — Switch between different AI models anytime.
 
-⚡ **Streaming Responses**
-See AI responses appear instantly, token by token.
+⚡ **Streaming Responses** — See AI responses appear instantly.
 
-🔐 **Secure Authentication**
-JWT authentication with secure refresh-token sessions.
+🔐 **Secure Authentication** — JWT authentication with secure sessions.
 
-💾 **Persistent Conversations**
-Your chats are stored in PostgreSQL and available across sessions.
+💾 **Persistent Conversations** — Chats are stored in PostgreSQL.
 
-🎨 **Modern UI**
-Clean, responsive interface with dark/light theme support.
+🎨 **Modern UI** — Clean, responsive interface with dark/light theme support.
 
-🔄 **Regenerate & Edit**
-Regenerate responses or edit previous messages and continue the conversation.
+🔄 **Regenerate & Edit** — Regenerate responses or edit previous messages.
 
-⚙️ **Model Preferences**
-Choose your preferred default model from Settings.
+⚙️ **Model Preferences** — Choose your preferred default model.
 
 ---
 
 ## 🤖 Available AI Models
 
-| Provider            | Models                  | Best For                         |
-| ------------------- | ----------------------- | -------------------------------- |
-| 🟢 **Groq**         | Llama 3.3 70B           | ⚡ Fast responses & general chat  |
-| 🟣 **Hugging Face** | DeepSeek R1 Distill 14B | 🧠 Reasoning & problem solving   |
-| 🟣 **Hugging Face** | Qwen2.5 7B              | 💻 Coding & general tasks        |
-| 🔵 **OpenRouter**   | GPT-OSS 20B             | 🧠 Reasoning & coding            |
-| 🔵 **OpenRouter**   | Laguna S 2.1            | 💬 General-purpose conversations |
+| Provider            | Models                  | Best For                        |
+| ------------------- | ----------------------- | ------------------------------- |
+| 🟢 **Groq**         | Llama 3.3 70B           | ⚡ Fast responses & general chat |
+| 🟣 **Hugging Face** | DeepSeek R1 Distill 14B | 🧠 Reasoning & problem solving  |
+| 🟣 **Hugging Face** | Qwen2.5 7B              | 💻 Coding & general tasks       |
+| 🔵 **OpenRouter**   | GPT-OSS 20B             | 🧠 Reasoning & coding           |
+| 🔵 **OpenRouter**   | Laguna S 2.1            | 💬 General conversations        |
 
-### 🔀 How Model Routing Works
+---
+
+## 🔀 How It Works
 
 ```text
                  👤 User
                     │
                     ▼
-             💬 ChatForge UI
+              💬 ChatForge
                     │
                     ▼
-             🧠 Model Selection
+             🧠 Select Model
                     │
        ┌────────────┼────────────┐
        ▼            ▼            ▼
@@ -65,90 +64,42 @@ Choose your preferred default model from Settings.
        └────────────┼────────────┘
                     ▼
               ⚡ AI Response
-                    │
-                    ▼
-                💬 User
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-**Frontend**
+**Frontend:** React • TypeScript • Tailwind CSS • Framer Motion
 
-* ⚛️ React + TypeScript
-* 🎨 Tailwind CSS
-* 🎬 Framer Motion
+**Backend:** Node.js • Express • TypeScript
 
-**Backend**
+**Database:** PostgreSQL • Prisma
 
-* 🟩 Node.js + Express
-* 🔷 TypeScript
-* 🔐 JWT + bcrypt
+**Authentication:** JWT • bcrypt • HTTP-only cookies
 
-**Database**
-
-* 🐘 PostgreSQL
-* 🔺 Prisma ORM
-
-**AI Providers**
-
-* 🟢 Groq
-* 🔵 OpenRouter
-* 🟣 Hugging Face
+**AI Providers:** Groq • OpenRouter • Hugging Face
 
 ---
 
-## 🔐 Security
-
-ChatForge is designed with security in mind:
-
-* 🔑 Short-lived JWT access tokens
-* 🍪 Secure HTTP-only refresh cookies
-* 🔄 Refresh-token rotation
-* 🔒 bcrypt password hashing
-* 🛡️ Server-side model allowlist
-* ✅ Request validation with Zod
-* 🚫 API keys stored in environment variables
-
----
-
-## 🚀 Quick Start
-
-### 1️⃣ Clone
+## 🚀 Run Locally
 
 ```bash
 git clone <your-repository-url>
 cd chatforge
 ```
 
-### 2️⃣ Backend
+### Backend
 
 ```bash
 cd server
 npm install
 cp .env.example .env
-```
-
-Add your:
-
-```env
-DATABASE_URL="your_postgresql_url"
-JWT_ACCESS_SECRET="your_secret"
-
-GROQ_API_KEY="your_key"
-OPENROUTER_API_KEY="your_key"
-HUGGINGFACE_API_KEY="your_key"
-```
-
-Then:
-
-```bash
 npx prisma migrate dev
 npm run dev
 ```
 
-### 3️⃣ Frontend
+### Frontend
 
 ```bash
 cd ..
@@ -156,56 +107,33 @@ npm install
 npm run dev
 ```
 
-Open:
+Then open:
 
 ```text
 http://localhost:5173
 ```
 
-🎉 **You're ready to chat!**
-
 ---
 
 ## 🌐 Deployment
 
-| Part        | Recommended      |
-| ----------- | ---------------- |
-| 🎨 Frontend | Vercel           |
-| ⚙️ Backend  | Render / Railway |
-| 🐘 Database | Neon PostgreSQL  |
+| Component   | Platform                         |
+| ----------- | -------------------------------- |
+| 🎨 Frontend | Vercel                           |
+| ⚙️ Backend  | Render / Railway                 |
+| 🐘 Database | Neon PostgreSQL                  |
+| 🤖 AI       | Groq • OpenRouter • Hugging Face |
 
-Because ChatForge uses **cloud AI providers**, your personal computer does **not** need to stay online after deployment.
-
----
-
-## 📌 Project Structure
-
-```text
-ChatForge/
-│
-├── src/                 # ⚛️ Frontend
-│   ├── pages/
-│   ├── components/
-│   ├── config/
-│   ├── store/
-│   └── lib/
-│
-└── server/              # ⚙️ Backend
-    ├── prisma/
-    └── src/
-        ├── config/
-        ├── controllers/
-        ├── routes/
-        ├── middleware/
-        └── utils/
-```
+Cloud-based AI providers mean your personal computer does **not** need to stay online after deployment.
 
 ---
 
-## 💡 The Idea
+## 💡 Why ChatForge?
 
 > **Why use only one AI model when you can choose the right model for the task?**
 
 ChatForge brings multiple AI providers together into **one simple, fast and secure chat experience.**
 
 ### ⚡ ChatForge — Choose. Ask. Create.
+
+**🔗 Live:** https://llm-switchboard.vercel.app
