@@ -18,7 +18,7 @@ export const PROVIDERS: Record<Provider, ProviderConfig> = {
   },
   huggingface: {
     baseURL: "https://router.huggingface.co/v1",
-    apiKeyEnvVar: "HUGGINGFACE_API_KEY",
+    apiKeyEnvVar: "HF_API_KEY",
   },
 };
 
@@ -39,8 +39,8 @@ const MODEL_ROUTES: ModelRoute[] = [
   { id: "llama-3.3-70b-versatile", provider: "groq" },
   { id: "deepseek-r1-distill-llama-70b", provider: "groq" },
   { id: "openai/gpt-oss-120b:free", provider: "openrouter" },
-  { id: "qwen/qwen3-coder:free", provider: "openrouter" },
   { id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B", provider: "huggingface" },
+  { id: "Qwen/Qwen2.5-7B-Instruct", provider: "huggingface" },
 ];
 
 export function resolveModel(modelId: string): ModelRoute | undefined {

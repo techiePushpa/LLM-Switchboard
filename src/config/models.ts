@@ -6,11 +6,11 @@ import type { ModelDefinition } from "@/types/chat";
  * the sidebar, dropdown, and router all read from this list.
  *
  * All three providers below are genuinely free (no card required) and
- * run entirely in the cloud -- unlike the earlier Ollama setup, nothing
- * needs to be running on your own machine for these to respond. Each
- * `id` here must exactly match an entry in the server's mirrored list
- * at server/src/config/models.ts, which is what actually authorizes and
- * routes the request -- this file only controls what the UI shows.
+ * run entirely in the cloud, so nothing needs to be running on your own
+ * machine for these to respond. Each `id` here must exactly match an
+ * entry in the server's mirrored list at server/src/config/models.ts,
+ * which is what actually authorizes and routes the request -- this file
+ * only controls what the UI shows.
  */
 export const MODELS: ModelDefinition[] = [
   {
@@ -38,20 +38,20 @@ export const MODELS: ModelDefinition[] = [
     color: "#8B5CF6",
   },
   {
-    id: "qwen/qwen3-coder:free",
-    label: "Qwen3 Coder",
-    provider: "openrouter",
-    providerLabel: "OpenRouter",
-    tag: "Coding",
-    color: "#7C3AED",
-  },
-  {
     id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
     label: "DeepSeek R1 Distill 14B",
     provider: "huggingface",
     providerLabel: "Hugging Face",
     tag: "Reasoning",
     color: "#FFD21E",
+  },
+  {
+    id: "Qwen/Qwen2.5-7B-Instruct",
+    label: "Qwen2.5 7B",
+    provider: "huggingface",
+    providerLabel: "Hugging Face",
+    tag: "General",
+    color: "#7C3AED",
   },
 ];
 
